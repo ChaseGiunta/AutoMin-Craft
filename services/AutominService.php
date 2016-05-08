@@ -24,7 +24,66 @@ class AutominService extends BaseApplicationComponent
     if (!$type) {
       return $this->content;
     }
-    
+
+
+
+
+  if (craft()->config->get('devMode'))
+  	{
+	    //Get Passed Files
+	    $toCompile = $this->_extract_filenames($content, $type);
+
+	    //Trim Leading & Trailing Slashes
+	    foreach ($toCompile as $key=>$path) {
+	    	$toCompile[$key] = trim($path, '/');
+	    }
+
+	    //Get Import Path & Trim Leading & Trailing Slashes
+	    $importPath = $this->getSetting('autominSCSSIncludePaths');
+	    $importPath = trim($importPath[0], '/');
+
+	    //Find All Files in Import Path
+	    $files = scandir($importPath);
+
+	  	$search = ".scss";
+			$search_length = strlen($search);
+			$search_length = $search_length * -1;
+
+			foreach ($files as $key => $value) {
+
+				//Let's Format the File Paths Correctly
+				$value = $importPath . '/' . $value;
+
+				// Only get Files with .SCSS extensions
+		    if (substr($value, $search_length) == $search) {
+		    	//If this file matches a file to be compiled
+		    	if (in_array($value, $toCompile)) {
+		        $mains[] = $value;
+		    	} else {
+		    		$imports[] = $value;
+		    	}
+		    }
+			}
+
+			// Get Time for each main .scss file
+			// If import time is greater than main, modify main
+			foreach ($mains as $main) {
+				$mainTime = filemtime($main);
+				$cachebreak = false;
+				foreach ($imports as $key => $importFile) {
+					if (filemtime($importFile) > $mainTime) {
+						$cachebreak = true;
+					}
+				}
+				if ($cachebreak) {
+					touch($main);
+				}
+			}
+		}
+
+
+
+
     return $this->_process_markup($content, $type, $attr);    
   }
 
